@@ -207,7 +207,7 @@ def get_leaf_status():
     mqtt_publish(leaf_info)
 
     logging.info("End update time: " + datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
-    logging.info("Schedule API update every " + GET_UPDATE_INTERVAL + "min")
+    logging.info("Schedule API update every " + api_update_interval_min + "min")
     return (leaf_info)
 
 
