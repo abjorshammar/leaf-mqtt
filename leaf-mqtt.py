@@ -109,25 +109,7 @@ def on_message(client, userdata, msg):
             mqtt_publish(leaf_info)
 
 
-client = mqtt.Client("", True, None, mqtt.MQTTv31)
 
-# Callback when MQTT is connected
-client.on_connect = on_connect
-
-# Callback when MQTT message is received
-client.on_message = on_message
-
-# Connect to MQTT
-if 'mqtt_cert' in settings:
-    client.tls_set(settings['mqtt_cert'])
-
-client.username_pw_set(mqtt_username, mqtt_password)
-logging.info('Connecting to MQTT broker "' + mqtt_host + ':' + mqtt_port + '"')
-client.connect(mqtt_host, mqtt_port, 60)
-client.publish(mqtt_status_topic, "Connected to MQTT host " + mqtt_host)
-
-# Non-blocking MQTT subscription loop
-client.loop_start()
 
 
 def climate_control(climate_control_instruction):
@@ -187,7 +169,7 @@ def get_leaf_update():
 def get_leaf_status():
     logging.debug("login = %s , password = %s" % ( username , password) )
     logging.info("Prepare Session")
-    s = pycarwings2.Session(username, password , nissan_region_code)
+    s = pycarwings2.Session(username, password, nissan_region_code)
     logging.info("Login...")
     logging.info("Start update time: " + datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
 
@@ -250,11 +232,36 @@ def mqtt_publish(leaf_info):
         client.publish(mqtt_status_topic + "/connected", leaf_info.is_connected)
 
 
-#########################################################################################################################
-# Run on first time
+#
+# Run initial login and refresh from API
+#
+get_leaf_update()
 get_leaf_status()
 
-# Then schedule
+#
+# Start MQTT
+#
+client = mqtt.Client("", True, None, mqtt.MQTTv31)
+
+# Callback when MQTT is connected
+client.on_connect = on_connect
+
+# Callback when MQTT message is received
+client.on_message = on_message
+
+# Connect to MQTT
+if 'mqtt_cert' in settings:
+    client.tls_set(settings['mqtt_cert'])
+
+client.username_pw_set(mqtt_username, mqtt_password)
+logging.info('Connecting to MQTT broker "' + mqtt_host + ':' + mqtt_port + '"')
+client.connect(mqtt_host, mqtt_port, 60)
+client.publish(mqtt_status_topic, "Connected to MQTT host " + mqtt_host)
+
+# Non-blocking MQTT subscription loop
+client.loop_start()
+
+# Run schedule
 logging.info("Schedule API update every " + GET_UPDATE_INTERVAL + "min")
 schedule.every(int(GET_UPDATE_INTERVAL)).minutes.do(get_leaf_status)
 
