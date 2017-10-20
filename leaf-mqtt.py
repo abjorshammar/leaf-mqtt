@@ -235,7 +235,7 @@ def mqtt_publish(leaf_info):
 #
 # Run initial login and refresh from API
 #
-get_leaf_update()
+#get_leaf_update()
 
 #
 # Start MQTT
