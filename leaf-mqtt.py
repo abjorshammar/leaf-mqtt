@@ -264,7 +264,7 @@ client.loop_start()
 get_leaf_status()
 
 # Run schedule
-logging.info("Schedule API update every " + GET_UPDATE_INTERVAL + "min")
+logging.info("Schedule API update every " + api_update_interval_min + "min")
 schedule.every(int(api_update_interval_min)).minutes.do(get_leaf_status)
 
 while True:
