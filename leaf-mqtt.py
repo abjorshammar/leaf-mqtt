@@ -236,7 +236,6 @@ def mqtt_publish(leaf_info):
 # Run initial login and refresh from API
 #
 get_leaf_update()
-get_leaf_status()
 
 #
 # Start MQTT
@@ -260,6 +259,9 @@ client.publish(mqtt_status_topic, "Connected to MQTT host " + mqtt_host)
 
 # Non-blocking MQTT subscription loop
 client.loop_start()
+
+# Run initial get_status
+get_leaf_status()
 
 # Run schedule
 logging.info("Schedule API update every " + GET_UPDATE_INTERVAL + "min")
