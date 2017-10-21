@@ -13,7 +13,7 @@ import os
 
 
 config_file = '/conf/config.ini'
-config_settings =[
+config_settings = [
     'username',
     'password',
     'mqtt_host',
@@ -71,6 +71,7 @@ mqtt_status_topic = settings['mqtt_status_topic']
 nissan_region_code = settings['nissan_region_code']
 api_update_interval_min = settings['api_update_interval_min']
 
+
 # The callback for when the client receives a CONNACK response from the server.
 def on_connect(client, userdata, flags, rc):
     logging.info("Connected to MQTT host " + mqtt_host + " with result code "+str(rc))
@@ -109,7 +110,49 @@ def on_message(client, userdata, msg):
             mqtt_publish(leaf_info)
 
 
+def mqtt_publish(leaf_info):
+    logging.info("End update time: " + datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
 
+    logging.info("publishing to MQTT base status topic: " + mqtt_status_topic)
+    client.publish(mqtt_status_topic + "/last_updated", leaf_info.answer["BatteryStatusRecords"]["NotificationDateAndTime"])
+    time.sleep(1)
+    client.publish(mqtt_status_topic + "/battery_percent", leaf_info.battery_percent)
+    time.sleep(1)
+    client.publish(mqtt_status_topic + "/charging_status", leaf_info.charging_status)
+    time.sleep(1)
+    client.publish(mqtt_status_topic + "/charge_time", str(leaf_info.time_to_full_l2))
+    time.sleep(1)
+
+    if leaf_info.is_connected == True:
+        client.publish(mqtt_status_topic + "/connected", "Yes")
+    elif leaf_info.is_connected == False:
+        client.publish(mqtt_status_topic + "/connected", "No")
+    else:
+        client.publish(mqtt_status_topic + "/connected", leaf_info.is_connected)
+
+
+#
+# Start MQTT
+#
+client = mqtt.Client("", True, None, mqtt.MQTTv31)
+
+# Callback when MQTT is connected
+client.on_connect = on_connect
+
+# Callback when MQTT message is received
+client.on_message = on_message
+
+# Connect to MQTT
+if 'mqtt_cert' in settings:
+    client.tls_set(settings['mqtt_cert'])
+
+client.username_pw_set(mqtt_username, mqtt_password)
+logging.info('Connecting to MQTT broker "' + mqtt_host + ':' + mqtt_port + '"')
+client.connect(mqtt_host, mqtt_port, 60)
+client.publish(mqtt_status_topic, "Connected to MQTT host " + mqtt_host)
+
+# Non-blocking MQTT subscription loop
+client.loop_start()
 
 
 def climate_control(climate_control_instruction):
@@ -146,6 +189,7 @@ def get_leaf_update():
         l = s.get_leaf()
     except:
         logging.error("CarWings API error")
+        return
 
     logging.info("Requesting update from car..wait 30s")
     try:
@@ -177,6 +221,7 @@ def get_leaf_status():
         l = s.get_leaf()
     except:
         logging.error("CarWings API error")
+        return
 
     logging.info("get_latest_battery_status")
 
@@ -210,55 +255,6 @@ def get_leaf_status():
     logging.info("Schedule API update every " + api_update_interval_min + "min")
     return (leaf_info)
 
-
-def mqtt_publish(leaf_info):
-    logging.info("End update time: " + datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
-
-    logging.info("publishing to MQTT base status topic: " + mqtt_status_topic)
-    client.publish(mqtt_status_topic + "/last_updated", leaf_info.answer["BatteryStatusRecords"]["NotificationDateAndTime"])
-    time.sleep(1)
-    client.publish(mqtt_status_topic + "/battery_percent", leaf_info.battery_percent)
-    time.sleep(1)
-    client.publish(mqtt_status_topic + "/charging_status", leaf_info.charging_status)
-    time.sleep(1)
-    client.publish(mqtt_status_topic + "/charge_time", str(leaf_info.time_to_full_l2))
-    time.sleep(1)
-
-    if leaf_info.is_connected == True:
-        client.publish(mqtt_status_topic + "/connected", "Yes")
-    elif leaf_info.is_connected == False:
-        client.publish(mqtt_status_topic + "/connected", "No")
-    else:
-        client.publish(mqtt_status_topic + "/connected", leaf_info.is_connected)
-
-
-#
-# Run initial login and refresh from API
-#
-#get_leaf_update()
-
-#
-# Start MQTT
-#
-client = mqtt.Client("", True, None, mqtt.MQTTv31)
-
-# Callback when MQTT is connected
-client.on_connect = on_connect
-
-# Callback when MQTT message is received
-client.on_message = on_message
-
-# Connect to MQTT
-if 'mqtt_cert' in settings:
-    client.tls_set(settings['mqtt_cert'])
-
-client.username_pw_set(mqtt_username, mqtt_password)
-logging.info('Connecting to MQTT broker "' + mqtt_host + ':' + mqtt_port + '"')
-client.connect(mqtt_host, mqtt_port, 60)
-client.publish(mqtt_status_topic, "Connected to MQTT host " + mqtt_host)
-
-# Non-blocking MQTT subscription loop
-client.loop_start()
 
 # Run initial get_status
 get_leaf_status()
